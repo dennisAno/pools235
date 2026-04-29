@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>EP-235 路線大師</title>
     <style>
         body {
@@ -13,67 +13,79 @@
             background-color: #1a1a1a;
             color: #ecf0f1;
             margin: 0;
-            padding: 20px;
+            padding: 10px;
+            overscroll-behavior-y: contain;
+            user-select: none;
+            -webkit-user-select: none;
         }
 
-        h1 { margin-bottom: 10px; color: #f1c40f; letter-spacing: 2px; }
+        h1 { margin: 10px 0; color: #f1c40f; font-size: 1.5rem; letter-spacing: 2px; }
 
         #canvas-container {
             position: relative;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
             line-height: 0;
-            border: 5px solid #444;
+            border: 3px solid #444;
             border-radius: 8px;
             overflow: hidden;
             background-color: #333;
+            width: 95vw;
+            max-width: 800px;
         }
 
-        canvas { cursor: crosshair; max-width: 100%; height: auto; }
+        canvas { 
+            cursor: crosshair; 
+            width: 100%; 
+            height: auto;
+            touch-action: none;
+            -webkit-touch-callout: none;
+        }
 
         .toolbar {
-            margin-top: 20px;
+            margin-top: 15px;
             display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
+            flex-direction: column;
+            gap: 15px;
             background: linear-gradient(145deg, #2c3e50, #000000);
-            padding: 20px;
+            padding: 15px;
             border-radius: 15px;
             border: 1px solid #555;
-            align-items: center;
-            justify-content: center;
+            width: 90vw;
+            max-width: 600px;
         }
 
-        .group { display: flex; gap: 10px; align-items: center; padding: 0 10px; border-right: 1px solid #555; }
-        .group:last-child { border-right: none; }
-        .label { font-size: 0.9em; color: #95a5a6; margin-right: 5px; }
+        .group { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; }
+        .label { font-size: 0.85em; color: #95a5a6; min-width: 40px; }
 
         .ball-slot {
-            width: 50px; height: 50px; border-radius: 50%;
+            width: 45px; height: 45px; border-radius: 50%;
             display: flex; justify-content: center; align-items: center;
-            font-weight: bold; cursor: pointer; user-select: none;
-            box-shadow: inset -3px -3px 8px rgba(0,0,0,0.5), 2px 3px 6px rgba(0,0,0,0.4);
-            transition: 0.2s;
+            font-weight: bold; cursor: pointer;
+            border: 1px solid rgba(0,0,0,0.3);
         }
-        .ball-slot:hover { transform: scale(1.1); }
 
         .btn {
-            padding: 8px 15px; background: #34495e; border: 1px solid #7f8c8d;
-            color: white; cursor: pointer; border-radius: 5px; font-size: 14px;
+            padding: 8px 12px; background: #34495e; border: 1px solid #7f8c8d;
+            color: white; cursor: pointer; border-radius: 5px; font-size: 13px;
         }
         .btn.active { background: #f1c40f; color: #000; border-color: #f39c12; }
 
         .color-opt {
-            width: 25px; height: 25px; border-radius: 3px; cursor: pointer;
+            width: 30px; height: 30px; border-radius: 5px; cursor: pointer;
             border: 2px solid transparent;
         }
-        .color-opt.active { border-color: #fff; transform: scale(1.2); }
+        .color-opt.active { border-color: #fff; transform: scale(1.1); }
 
         .white { background: #ffffff; color: #333; }
         .yellow { background: #f1c40f; color: #333; }
         .red { background: #e74c3c; color: white; }
         .blue { background: #3498db; }
 
-        .controls-hint { margin-top: 10px; font-size: 0.85em; color: #7f8c8d; }
+        .undo-btn {
+            background-color: #95a5a6; color: #1a1a1a; font-weight: bold; width: 100%;
+            margin-top: 5px; padding: 10px; border-radius: 5px; border: none;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -84,11 +96,18 @@
         <canvas id="poolTable"></canvas>
     </div>
 
-    <div class="controls-hint">
-        提示：左鍵拖曳球或畫線 | <strong>右鍵</strong>可取消上一個動作
-    </div>
-
     <div class="toolbar">
+        <div class="group">
+            <button class="btn active" id="btn-move" onclick="setMode('move')">拖曳球</button>
+            <button class="btn" id="btn-line" onclick="setMode('line')">直線</button>
+            <button class="btn" id="btn-arrow" onclick="setMode('arrow')">箭頭線</button>
+            <div style="width: 10px;"></div>
+            <div class="color-opt white active" onclick="setLineColor('#ffffff', this)"></div>
+            <div class="color-opt yellow" onclick="setLineColor('#f1c40f', this)"></div>
+            <div class="color-opt red" onclick="setLineColor('#e74c3c', this)"></div>
+            <div class="color-opt blue" onclick="setLineColor('#3498db', this)"></div>
+        </div>
+
         <div class="group">
             <span class="label">放球:</span>
             <div class="ball-slot white" onclick="addBall('cue')">母</div>
@@ -97,20 +116,7 @@
             <div class="ball-slot red" onclick="addBall('ball11')">11</div>
         </div>
 
-        <div class="group">
-            <span class="label">工具:</span>
-            <button class="btn active" id="btn-move" onclick="setMode('move')">拖曳球</button>
-            <button class="btn" id="btn-line" onclick="setMode('line')">直線</button>
-            <button class="btn" id="btn-arrow" onclick="setMode('arrow')">箭頭線</button>
-        </div>
-
-        <div class="group">
-            <span class="label">線色:</span>
-            <div class="color-opt white active" onclick="setLineColor('#ffffff', this)"></div>
-            <div class="color-opt yellow" onclick="setLineColor('#f1c40f', this)"></div>
-            <div class="color-opt red" onclick="setLineColor('#e74c3c', this)"></div>
-            <div class="color-opt blue" onclick="setLineColor('#3498db', this)"></div>
-        </div>
+        <button class="undo-btn" onclick="undo()">⬅ 復原上一步</button>
     </div>
 
     <script>
@@ -118,7 +124,7 @@
         const ctx = canvas.getContext('2d');
         
         let history = [];
-        let mode = 'move'; // move, line, arrow
+        let mode = 'move'; 
         let selectedColor = '#ffffff';
         let isDrawing = false;
         let startPoint = { x: 0, y: 0 };
@@ -131,8 +137,7 @@
             ball11: { x: 0, y: 0, color: '#e74c3c', label: '11', textColor: '#fff', active: false }
         };
         
-        let lines = []; // 儲存畫好的線條 {type, x1, y1, x2, y2, color}
-
+        let lines = []; 
         const ballRadius = 22;
         let draggingBall = null;
         let tableImg = new Image();
@@ -147,27 +152,23 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(tableImg, 0, 0);
-
-            // 1. 繪製已存在的線條
             lines.forEach(l => drawLineObj(l));
-
-            // 2. 繪製正在畫的線條 (預覽)
             if (isDrawing && (mode === 'line' || mode === 'arrow')) {
                 drawLineObj({ type: mode, x1: startPoint.x, y1: startPoint.y, x2: currentPoint.x, y2: currentPoint.y, color: selectedColor });
             }
-
-            // 3. 繪製球
             for (let key in balls) {
                 let b = balls[key];
                 if (b.active) {
                     ctx.beginPath();
                     ctx.arc(b.x, b.y, ballRadius, 0, Math.PI * 2);
-                    let grad = ctx.createRadialGradient(b.x-5, b.y-5, 2, b.x, b.y, ballRadius);
-                    grad.addColorStop(0, '#fff');
-                    grad.addColorStop(0.2, b.color);
-                    grad.addColorStop(1, '#000');
-                    ctx.fillStyle = grad;
+                    // 改為純色填充
+                    ctx.fillStyle = b.color;
                     ctx.fill();
+                    // 加入黑色細邊框增加辨識度
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = '#000000';
+                    ctx.stroke();
+                    
                     ctx.fillStyle = b.textColor;
                     ctx.font = "bold 18px Arial";
                     ctx.textAlign = "center";
@@ -185,7 +186,6 @@
             ctx.moveTo(l.x1, l.y1);
             ctx.lineTo(l.x2, l.y2);
             ctx.stroke();
-
             if (l.type === 'arrow') {
                 const angle = Math.atan2(l.y2 - l.y1, l.x2 - l.x1);
                 const headLen = 15;
@@ -199,17 +199,18 @@
             }
         }
 
-        function getMousePos(e) {
+        function getPos(e) {
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
-            return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
         }
 
-        canvas.onmousedown = function(e) {
-            if (e.button === 2) return; // 右鍵不觸發
-            const pos = getMousePos(e);
-
+        function handleStart(e) {
+            if (e.button === 2) return;
+            const pos = getPos(e);
             if (mode === 'move') {
                 const ballKeys = Object.keys(balls).reverse();
                 for (let key of ballKeys) {
@@ -226,35 +227,39 @@
                 startPoint = { ...pos };
                 currentPoint = { ...pos };
             }
-        };
+        }
 
-        window.onmousemove = function(e) {
-            const pos = getMousePos(e);
+        function handleMove(e) {
+            if (!draggingBall && !isDrawing) return;
+            if (e.cancelable) e.preventDefault();
+            const pos = getPos(e);
             if (draggingBall) {
                 draggingBall.x = pos.x;
                 draggingBall.y = pos.y;
-                draw();
             } else if (isDrawing) {
                 currentPoint = { ...pos };
-                draw();
             }
-        };
+            draw();
+        }
 
-        window.onmouseup = function() {
+        function handleEnd() {
             if (isDrawing) {
                 lines.push({ type: mode, x1: startPoint.x, y1: startPoint.y, x2: currentPoint.x, y2: currentPoint.y, color: selectedColor });
                 isDrawing = false;
                 draw();
             }
             draggingBall = null;
-        };
+        }
 
-        canvas.oncontextmenu = function(e) {
-            e.preventDefault();
-            undo();
-        };
+        canvas.addEventListener('mousedown', handleStart);
+        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('mouseup', handleEnd);
+        canvas.addEventListener('touchstart', handleStart, {passive: false});
+        window.addEventListener('touchmove', handleMove, {passive: false});
+        window.addEventListener('touchend', handleEnd);
 
-        // UI 切換功能
+        canvas.oncontextmenu = function(e) { e.preventDefault(); undo(); };
+
         function setMode(newMode) {
             mode = newMode;
             document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
